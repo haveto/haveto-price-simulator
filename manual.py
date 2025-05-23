@@ -3,9 +3,29 @@ import pandas as pd
 from tqdm import tqdm
 
 def total_blocks(years: int, block_time: int) -> int:
+    """
+    Calculate the total number of blocks produced over a given number of years.
+
+    Args:
+        years (int): The number of years to calculate blocks for.
+        block_time (int): Time to mine a block (in seconds).
+
+    Returns:
+        int: Total number of blocks produced in the given years.
+    """
     return int(years * 365.25 * 24 * 3600 // block_time)
 
 def montly_blocks(months: int, block_time: int) -> int:
+    """
+    Calculate the total number of blocks produced over a given number of months.
+
+    Args:
+        months (int): The number of months to calculate blocks for.
+        block_time (int): Time to mine a block (in seconds).
+
+    Returns:
+        int: Total number of blocks produced in the given months.
+    """
     return int(months * 30.5 * 24 * 3600 // block_time)
 
 DEBUG_PLOT=0
@@ -59,6 +79,15 @@ miner_revenue_reward_hvt = 0
 miner_revenue_gas_hvt = 0
 
 def height_to_year(height):
+    """
+    Convert a given block height to the number of years since the genesis block.
+
+    Args:
+        height (int): The block height to convert.
+
+    Returns:
+        int: The number of whole years that have passed based on the block height.
+    """
     return height//total_blocks(1, block_time=block_time_seconds)
 
 def simulate_cloud_pricing(year):
@@ -67,8 +96,6 @@ def simulate_cloud_pricing(year):
     blockchain_miner_host_cost_usd_per_month = initial_blockchain_miner_host_cost_usd_per_month * ((1 + yearly_inflation_rate)**year)
     total_network_cost_month=current_nodes * blockchain_miner_host_cost_usd_per_month
     cumu_total_network_cost_month += total_network_cost_month
-
-
 
 def simulate_program_runner(year):
     global current_gas_price_usd, active_program, current_gas_price_hvt, congestion, DEBUG_PLOT
@@ -80,30 +107,20 @@ def simulate_program_runner(year):
     if current_gas_price_hvt < 1e-18:
         current_gas_price_hvt = 1e-18
     current_gas_price_usd = current_gas_price_hvt * current_hvt_price_usd / shard_count
-    
-
-    
 
 def run_investor(year):
     global miner_revenue_hvt, miner_revenue_usd, miner_cost_hvt, current_nodes, miner_revenue_reward_hvt, miner_revenue_gas_hvt, miner_saving_hvt, DEBUG_PLOT
-    
 
     miner_revenue_reward_hvt = (current_reward * montly_blocks( months=1, block_time=block_time_seconds))
     miner_revenue_gas_hvt = (current_gas_price_hvt * active_program * gas_per_program)
 
     miner_revenue_hvt = miner_revenue_reward_hvt + miner_revenue_gas_hvt
     miner_revenue_usd = miner_revenue_hvt * current_hvt_price_usd
-    
 
     div = max(current_hvt_price_usd, 1)
     miner_cost_hvt = (current_nodes * blockchain_miner_host_cost_usd_per_month) / div
 
     miner_saving_hvt += (miner_revenue_hvt - miner_cost_hvt)
-    # print(miner_saving_hvt)
-    # if miner_saving_hvt < 0:
-    #     import sys
-    #     sys.exit()
-
 
     if miner_saving_hvt >= (blockchain_miner_host_cost_usd_per_month/div) * 1.2:
         current_nodes += 1
@@ -113,8 +130,6 @@ def run_investor(year):
         if current_nodes > 1:
             current_nodes -= 1
             miner_saving_hvt += (blockchain_miner_host_cost_usd_per_month / div)
-    
-
 
 def run_shard_manager(year):
     global shard_degree, shard_count, shard_base, congestion
@@ -138,66 +153,41 @@ def simulate_miner(year):
     run_investor(year)
     run_shard_manager(year)
 
-    
-    
-
 def simulate_market(year):
     global current_hvt_price_usd
-    blocks_a_month = montly_blocks(months=1, block_time=block_time_seconds)
-    
-    # current_hvt_price_usd = total_network_cost_month / (current_gas_price_hvt + (current_reward * montly_blocks(months=1, block_time=block_time_seconds))) # sharding pending
-    
     current_hvt_price_usd = (cumu_total_network_cost_month) / total_hvt_supply
 
-
 def calculate_congesion(active_program):
-    # count = variable_adjustment_internval * per_node_program_capacity_seconds / single_program_size_seconds
+    """
+    Calculate the network congestion ratio based on the number of active programs.
+
+    Args:
+        active_program (int or float): The current number of active programs running on the network.
+
+    Returns:
+        float: Congestion ratio, ranging from 0.0 to 1.0.
+            - 0.0 means no congestion.
+            - 1.0 means full congestion or overutilization.
+    """
     count = variable_adjustment_internval * shard_count * per_node_program_capacity_seconds / single_program_size_seconds
     return min(active_program / count, 1.0)
     
 def simulate_developers(year):
     global active_program, cost_per_program_on_chain_usd, cost_per_program_on_competition_usd, congestion, active_program_max_pricing_usd, DEBUG_PLOT
-    
+
     cost_per_program_on_chain_usd = (current_gas_price_usd) * gas_per_program 
     cost_per_program_on_competition_usd = competition_cloud_host_cost_usd_per_month * single_program_size_seconds / seconds_per_month
 
-    # print(year, "=="*10)
-    
-
-    # print(current_hvt_price_usd)
-    # print(current_gas_price_usd)
-    # print(shard_degree)
-    # print(active_program)
-    
     new_active_program = int(variable_adjustment_internval*shard_count*active_program_adding_rate)
 
     if calculate_congesion(active_program+new_active_program) <= 1.0 and cost_per_program_on_competition_usd >= cost_per_program_on_chain_usd:
-        # active_program_max_pricing_usd += [(cost_per_program_on_chain_usd+(random.random()*cost_per_program_on_chain_usd) )for i in range(new_active_program)]
         active_program += new_active_program
-        # print("asdasd",min(active_program_max_pricing_usd),  max(active_program_max_pricing_usd))
-        # print(cost_per_program_on_chain_usd, cost_per_program_on_competition_usd)
     
     if cost_per_program_on_competition_usd < cost_per_program_on_chain_usd:
-        # print(active_program_max_pricing_usd)
-        # print("asdasd",min(active_program_max_pricing_usd),  max(active_program_max_pricing_usd))
-        
-        # print(cost_per_program_on_chain_usd, cost_per_program_on_competition_usd)
-        # old_active_program_max_pricing_usd = sorted(active_program_max_pricing_usd)
-        
-        # remain_ratio = 1.0 - active_program_exodus_rate
-
-        # active_program_max_pricing_usd = active_program_max_pricing_usd[int(-1*remain_ratio*len(active_program_max_pricing_usd)):]
-        # active_program = len(active_program_max_pricing_usd)
         active_program = int(active_program*(1-active_program_exodus_rate))
-        
-        # if active_program == 0:
-        #     print("active_program")
-        #     import sys
-        #     sys.exit()
-        
+
     DEBUG_PLOT = active_program
     congestion = calculate_congesion(active_program)
-    
 
 log = []
 
@@ -207,8 +197,6 @@ for height in tqdm(range(0, blocks_tobe_mined, variable_adjustment_internval)):
     simulate_developers(year)
     simulate_miner(year)
     simulate_market(year)
-    
-
 
     log.append({
         'height':height,
@@ -241,16 +229,9 @@ import plotly.express as px
 
 df = pd.DataFrame(log)
 
-
-
 # Plot only numeric columns—avoid mixed dtypes
 numeric_cols = df.select_dtypes(include=["number"]).columns
 y_cols = [col for col in numeric_cols if col != "block"]
-# y_cols = [col for col in numeric_cols if col in [
-#     "block", 
-#     # "miner_revenue_gas_hvt", 
-#     "DEBUG_PLOT"
-# ]]
 
 fig = px.line(
     df,
@@ -261,8 +242,3 @@ fig = px.line(
 )
 fig.update_layout(legend_title_text="Metrics", hovermode="x unified")
 fig.show()
-
-
-
-    
-
