@@ -167,8 +167,7 @@ def simulate_market():
         - `cumu_total_network_cost_month` represents the total network cost for the month.
         - `total_hvt_supply` is the total circulating supply of HVT tokens.
     """
-    global current_hvt_price_usd
-    current_hvt_price_usd = (cumu_total_network_cost_month) / total_hvt_supply
+    return (cumu_total_network_cost_month) / total_hvt_supply
 
 def calculate_congesion(active_program):
     """
@@ -209,7 +208,7 @@ for height in tqdm(range(0, blocks_tobe_mined, variable_adjustment_internval)):
     simulate_cloud_pricing(year)
     simulate_developers(year)
     simulate_miner(year)
-    simulate_market()
+    current_hvt_price_usd = simulate_market()
 
     log.append({
         'height':height,
