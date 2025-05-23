@@ -153,7 +153,20 @@ def simulate_miner(year):
     run_investor(year)
     run_shard_manager(year)
 
-def simulate_market(year):
+def simulate_market():
+    """
+    Simulate the current market price of the HVT token based on network costs and supply.
+
+    This function calculates the HVT token price in USD by dividing the cumulative monthly
+    network cost by the total supply of HVT tokens.
+
+    Returns:
+        float: The updated HVT token price (`current_hvt_price_usd`).
+
+    Notes:
+        - `cumu_total_network_cost_month` represents the total network cost for the month.
+        - `total_hvt_supply` is the total circulating supply of HVT tokens.
+    """
     global current_hvt_price_usd
     current_hvt_price_usd = (cumu_total_network_cost_month) / total_hvt_supply
 
@@ -196,7 +209,7 @@ for height in tqdm(range(0, blocks_tobe_mined, variable_adjustment_internval)):
     simulate_cloud_pricing(year)
     simulate_developers(year)
     simulate_miner(year)
-    simulate_market(year)
+    simulate_market()
 
     log.append({
         'height':height,
